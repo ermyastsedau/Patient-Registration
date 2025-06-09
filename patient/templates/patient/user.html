@@ -1,0 +1,240 @@
+{% extends 'patient/base.html' %}
+
+{% block title %}Patient Management{% endblock %}
+
+{% block content %}
+<!-- Button to trigger modal -->
+<button type="button" class="btn btn-primary ms-1" data-toggle="modal" data-target="#userModal">
+    Add New User
+</button>
+
+<!-- Patient Table -->
+<table class="table table-striped mt-3">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Full Name</th>
+            <th scope="col">Username</th>
+            <th scope="col">Phone Number</th>
+            <th scope="col">Email</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in patients %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.fullname }}</td>
+            <td>{{ i.username }}</td>
+            <td>{{ i.phone_number }}</td>
+            <td>{{ i.email }}</td>
+
+            <td>
+                <div class="d-flex flex-nowrap align-items-center">
+                    <button type="button" class="btn btn-warning btn-sm me-1 edit-patient-btn"
+                        data-toggle="modal"
+                        data-target="#userModal"
+                        data-id="{{ i.id }}"
+                        data-fullname="{{ i.fullname }}"
+                        data-dob="{{ i.date_of_birth|date:'Y-m-d' }}"
+                        data-gender="{{ i.gender }}"
+                        data-phone="{{ i.phone_number }}"
+                        data-email="{{ i.email }}"
+                        data-address="{{ i.address }}">
+                        Edit
+                    </button>
+                    |
+                    <button type="button" class="btn btn-danger btn-sm me-1 delete-patient-btn"
+                        data-id="{{ i.id }}">
+                        Delete
+                    </button>
+                    |
+                    <button type="button" class="btn btn-info btn-sm send-email-btn"
+                        data-id="{{ i.id }}"
+                        data-fullname="{{ i.fullname }}">
+                        Send Email
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" role="dialog" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <form id="patientForm" method="post" action="{% url 'patient_register' %}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">Add New Patient</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" class="form-control" id="fullname" name="fullname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date_of_birth">Date of Birth</label>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select class="form-control" id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Patient</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function () {
+    // Handle Add New Patient (reset form)
+    $('[data-target="#userModal"]').on('click', function () {
+        if (!$(this).hasClass('edit-patient-btn')) {
+            $('#userModalLabel').text('Add New User');
+            $('#patientForm').trigger('reset');
+            $('#patientForm').attr('action', '{% url "patient_register" %}');
+        }
+    });
+
+    // Handle Edit button click
+    $('.edit-patient-btn').on('click', function () {
+        var button = $(this);
+
+        // Set modal title and form action
+        $('#userModalLabel').text('Edit Patient');
+        var patientId = button.data('id');
+        $('#patientForm').attr('action', '/patients/edit/' + patientId + '/');
+
+        // Fill form with existing data
+        $('#fullname').val(button.data('fullname'));
+        $('#date_of_birth').val(button.data('dob'));
+        $('#gender').val(button.data('gender'));
+        $('#phone_number').val(button.data('phone'));
+        $('#email').val(button.data('email'));
+        $('#address').val(button.data('address'));
+    });
+
+    // AJAX form submission
+    $('#patientForm').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+
+        $.ajax({
+            type: form.attr('method'),
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function (response) {
+                if (response.success) {
+                    $('#userModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('There was an error: ' + response.error);
+                }
+            },
+            error: function () {
+                alert('An error occurred while submitting the form.');
+            }
+        });
+    });
+
+    // Delete a record
+    $('.delete-patient-btn').on('click', function () {
+        const patientId = $(this).data('id');
+
+        if (confirm('Are you sure you want to delete this patient?')) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/delete/${patientId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to delete patient: ' + response.error);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while deleting the patient.');
+                }
+            });
+        }
+    });
+
+    // Send email
+    $('.send-email-btn').on('click', function () {
+        const patientId = $(this).data('id');
+        const fullname = $(this).data('fullname');
+
+        if (confirm(`Are you sure you want to send an email to ${fullname}?`)) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/send-email/${patientId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert('Email sent successfully!');
+                    } else {
+                        alert('Failed to send email: ' + response.error);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while sending the email.');
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+    /* Optional: Custom scrollbar styling */
+    .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+{% endblock %}

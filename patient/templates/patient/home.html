@@ -1,0 +1,511 @@
+{% extends 'patient/base.html' %}
+
+{% block title %}Patient Management{% endblock %}
+
+{% block content %}
+<!-- Button to trigger modal -->
+<button type="button" class="btn btn-primary ms-1" data-toggle="modal" data-target="#patientModal">
+    Add New Patient
+</button>
+
+<!-- Patient Table -->
+<table class="table table-striped mt-3">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Full Name</th>
+            <th scope="col">Date of Birth</th>
+            <th scope="col">Gender</th>
+            <th scope="col">Phone Number</th>
+            <th scope="col">Email</th>
+            <th scope="col">Address</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in patients %}
+        <tr class="patient-row" data-patient-id="{{ i.id }}">
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.fullname }}</td>
+            <td>{{ i.date_of_birth }}</td>
+            <td>{{ i.gender }}</td>
+            <td>{{ i.phone_number }}</td>
+            <td>{{ i.email }}</td>
+            <td>{{ i.address }}</td>
+
+            <td>
+                <div class="d-flex flex-nowrap align-items-center">
+                    <button type="button" class="btn btn-warning btn-sm me-1 edit-patient-btn"
+                        data-toggle="modal"
+                        data-target="#patientModal"
+                        data-id="{{ i.id }}"
+                        data-fullname="{{ i.fullname }}"
+                        data-dob="{{ i.date_of_birth|date:'Y-m-d' }}"
+                        data-gender="{{ i.gender }}"
+                        data-phone="{{ i.phone_number }}"
+                        data-email="{{ i.email }}"
+                        data-address="{{ i.address }}">
+                        Edit
+                    </button>
+                    |
+                    <button type="button" class="btn btn-danger btn-sm me-1 delete-patient-btn"
+                        data-id="{{ i.id }}">
+                        Delete
+                    </button>
+                    |
+                    <button type="button" class="btn btn-info btn-sm send-email-btn"
+                        data-id="{{ i.id }}"
+                        data-fullname="{{ i.fullname }}">
+                        Send Email
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal fade" id="patientModal" tabindex="-1" role="dialog" aria-labelledby="patientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <form id="patientForm" method="post" action="{% url 'patient_register' %}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="patientModalLabel">Add New Patient</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" class="form-control" id="fullname" name="fullname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date_of_birth">Date of Birth</label>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select class="form-control" id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Patient</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Medical Records Modal -->
+<div class="modal fade" id="medicalRecordModal" tabindex="-1" role="dialog" aria-labelledby="medicalRecordModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="medicalRecordModalLabel">Medical Records</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <button type="button" class="btn btn-success mb-3" id="add-medical-record-btn">
+          Add New Record
+        </button>
+        <table class="table table-bordered" id="medical-records-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date</th>
+              <th>HCP</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Medical Record Modal -->
+<div class="modal fade" id="medicalRecordFormModal" tabindex="-1" role="dialog" aria-labelledby="medicalRecordFormModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form id="medical-record-form" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title" id="medicalRecordFormModalLabel">Add Medical Record</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="medical-record-id" name="id">
+          <input type="hidden" id="medical-record-patient-id" name="patient_id">
+          {% csrf_token %}
+          
+          <!-- Date Field -->
+          <div class="form-group">
+            <label for="medical-record-date">Date</label>
+            <input type="date" class="form-control" id="medical-record-date" name="date" required>
+          </div>
+          
+          <!-- Healthcare Provider Dropdown -->
+          <div class="form-group">
+            <label for="medical-record-hcp">Healthcare Provider</label>
+            <select class="form-control" id="medical-record-hcp" name="hcp" required>
+              <option value="">Select Provider</option>
+              {% for hcp in hcps %}
+                <option value="{{ hcp.id }}">{{ hcp.fullname }} ({{ hcp.get_profession_display }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Status Dropdown -->
+          <div class="form-group">
+            <label for="medical-record-status">Status</label>
+            <select class="form-control" id="medical-record-status" name="status" required>
+              <option value="">Select Status</option>
+              {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Payment Status Dropdown -->
+          <div class="form-group">
+            <label for="medical-record-payment">Payment Status</label>
+            <select class="form-control" id="medical-record-payment" name="payment_status" required>
+              <option value="">Select Payment Status</option>
+              {% for value, label in payment_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function () {
+    // Handle Add New Patient (reset form)
+    $('[data-target="#patientModal"]').on('click', function () {
+        if (!$(this).hasClass('edit-patient-btn')) {
+            $('#patientModalLabel').text('Add New Patient');
+            $('#patientForm').trigger('reset');
+            $('#patientForm').attr('action', '{% url "patient_register" %}');
+        }
+    });
+
+    // Handle Edit button click
+    $('.edit-patient-btn').on('click', function () {
+        var button = $(this);
+
+        // Set modal title and form action
+        $('#patientModalLabel').text('Edit Patient');
+        var patientId = button.data('id');
+        $('#patientForm').attr('action', '/patients/edit/' + patientId + '/');
+
+        // Fill form with existing data
+        $('#fullname').val(button.data('fullname'));
+        $('#date_of_birth').val(button.data('dob'));
+        $('#gender').val(button.data('gender'));
+        $('#phone_number').val(button.data('phone'));
+        $('#email').val(button.data('email'));
+        $('#address').val(button.data('address'));
+    });
+
+    // AJAX form submission
+    $('#patientForm').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+
+        $.ajax({
+            type: form.attr('method'),
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function (response) {
+                if (response.success) {
+                    $('#patientModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('There was an error: ' + response.error);
+                }
+            },
+            error: function () {
+                alert('An error occurred while submitting the form.');
+            }
+        });
+    });
+
+    // Delete a patient record
+    $('.delete-patient-btn').on('click', function () {
+        const patientId = $(this).data('id');
+
+        if (confirm('Are you sure you want to delete this patient?')) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/delete/${patientId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to delete patient: ' + response.error);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while deleting the patient.');
+                }
+            });
+        }
+    });
+
+    // Send email
+    $('.send-email-btn').on('click', function () {
+        const patientId = $(this).data('id');
+        const fullname = $(this).data('fullname');
+
+        if (confirm(`Are you sure you want to send an email to ${fullname}?`)) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/send-email/${patientId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert('Email sent successfully!');
+                    } else {
+                        alert('Failed to send email: ' + response.error);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while sending the email.');
+                }
+            });
+        }
+    });
+
+    // Handle patient row click to show medical records
+    var currentPatientId = null;
+    
+    $(document).on('click', '.patient-row', function(e) {
+    // Check if the click was on an action button or its children
+    if ($(e.target).closest('.edit-patient-btn, .delete-patient-btn, .send-email-btn').length === 0) {
+        currentPatientId = $(this).data('patient-id');
+        loadMedicalRecords(currentPatientId);
+    }
+   });
+
+    // Function to load medical records
+    function loadMedicalRecords(patientId) {
+        $.ajax({
+            url: `/patients/${patientId}/medical-records/`,
+            type: 'GET',
+            success: function (response) {
+                const tbody = $('#medical-records-table tbody');
+                tbody.empty();
+
+                if (response.records.length === 0) {
+                    tbody.append('<tr><td colspan="6">No medical records found.</td></tr>');
+                } else {
+                    response.records.forEach((record, index) => {
+                        tbody.append(`
+                            <tr data-record-id="${record.id}">
+                                <td>${index + 1}</td>
+                                <td data-field="date">${record.date}</td>
+                                <td data-field="hcp" data-hcp-id="${record.hcp_id}">${record.hcp}</td>
+                                <td data-field="status">${record.status}</td>
+                                <td data-field="payment_status">${record.payment_status}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning edit-record-btn" 
+                                            data-record-id="${record.id}">Edit</button>
+                                    <button class="btn btn-sm btn-danger delete-record-btn" 
+                                            data-record-id="${record.id}">Delete</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                }
+
+                $('#medicalRecordModal').modal('show');
+            },
+            error: function () {
+                alert('Failed to load medical records.');
+            }
+        });
+    }
+
+    // Add new medical record button
+    $('#add-medical-record-btn').on('click', function() {
+        $('#medicalRecordFormModalLabel').text('Add Medical Record');
+        $('#medical-record-id').val('');
+        $('#medical-record-patient-id').val(currentPatientId);
+        $('#medicalRecordForm').trigger('reset');
+        $('#medicalRecordFormModal').modal('show');
+
+        resetMedicalRecordForm();
+    });
+
+    // Edit medical record button
+    $(document).on('click', '.edit-record-btn', function() {
+        const recordId = $(this).data('record-id');
+        const row = $(this).closest('tr');
+        
+        // Set modal to edit mode
+        $('#medicalRecordFormModalLabel').text('Edit Medical Record');
+        $('#medical-record-id').val(recordId);  // Critical: Set the existing ID
+        $('#medical-record-patient-id').val(currentPatientId);
+        $('#medical-record-date').val(row.find('td[data-field="date"]').text());
+        
+        // Set HCP by ID (from data attribute)
+        const hcpId = row.find('td[data-field="hcp"]').data('hcp-id');
+        $('#medical-record-hcp').val(hcpId);
+        
+        $('#medical-record-status').val(row.find('td[data-field="status"]').text());
+        $('#medical-record-payment').val(row.find('td[data-field="payment_status"]').text());
+        
+        $('#medicalRecordFormModal').modal('show');
+   });
+
+    // Delete medical record button
+    $(document).on('click', '.delete-record-btn', function() {
+        const recordId = $(this).data('record-id');
+        
+        if (confirm('Are you sure you want to delete this medical record?')) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/medical-records/delete/${recordId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    patient_id: currentPatientId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        loadMedicalRecords(currentPatientId);
+                    } else {
+                        alert('Failed to delete record: ' + response.error);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the record.');
+                }
+            });
+        }
+    });
+
+    // Medical record form submission
+   $('#medical-record-form').submit(function(e) {
+      e.preventDefault();
+    
+      const formData = {
+        id: $('#medical-record-id').val(),  // Will be empty for new records
+        patient_id: $('#medical-record-patient-id').val(),
+        date: $('#medical-record-date').val(),
+        hcp: $('#medical-record-hcp').val(),
+        status: $('#medical-record-status').val(),
+        payment_status: $('#medical-record-payment').val()
+      };
+
+    const url = formData.id 
+        ? `/patients/medical-records/edit/${formData.id}/` 
+        : '/patients/medical-records/add/';
+
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: JSON.stringify(formData),
+        contentType: 'application/json',
+        headers: { 
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest' 
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#medicalRecordFormModal').modal('hide');
+                resetMedicalRecordForm();
+                loadMedicalRecords(formData.patient_id);
+            }
+        }
+     });
+   });
+
+ // New function to reset the form
+ function resetMedicalRecordForm() {
+    $('#medical-record-form')[0].reset();  // Native form reset
+    $('#medical-record-id').val('');  // Clear the record ID
+    $('#medicalRecordFormModalLabel').text('Add Medical Record'); // Reset title
+    $('#medical-record-hcp').val('');  // Reset dropdowns
+    $('#medical-record-status').val('');
+    $('#medical-record-payment').val('');
+ }
+
+});
+</script>
+
+<style>
+    /* Optional: Custom scrollbar styling */
+    .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    
+    /* Style for editable cells */
+    .editable {
+        cursor: pointer;
+    }
+    .editable:hover {
+        background-color: #f8f9fa;
+    }
+    .patient-row {
+    cursor: pointer;
+    }
+    .patient-row td:last-child {
+        cursor: default; /* The actions column shouldn't show pointer cursor */
+    }
+</style>
+{% endblock %}

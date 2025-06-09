@@ -1,0 +1,199 @@
+{% extends 'patient/base.html' %}
+
+{% block title %}Patient Management{% endblock %}
+
+{% block content %}
+<!-- Button to trigger modal -->
+<button type="button" class="btn btn-primary ms-1" data-toggle="modal" data-target="#patientModal">
+    Add New HCP
+</button>
+
+<!-- Patient Table -->
+<table class="table table-striped mt-3">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Full Name</th>
+            <th scope="col">Phone Number</th>
+            <th scope="col">Email</th>
+            <th scope="col">Profession</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in allhcps %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.fullname }}</td>
+            <td>{{ i.phone_number }}</td>
+            <td>{{ i.email }}</td>
+            <td>{{ i.profession }}</td>
+
+            <td>
+                <div class="d-flex flex-nowrap align-items-center">
+                    <button type="button" class="btn btn-warning btn-sm me-1 edit-patient-btn"
+                        data-toggle="modal"
+                        data-target="#patientModal"
+                        data-id="{{ i.id }}"
+                        data-fullname="{{ i.fullname }}"
+                        data-phone="{{ i.phone_number }}"
+                        data-email="{{ i.email }}"
+                        data-profession="{{ i.profession }}">
+                        Edit
+                    </button>
+                    |
+                    <button type="button" class="btn btn-danger btn-sm me-1 delete-patient-btn"
+                        data-id="{{ i.id }}">
+                        Delete
+                    </button>
+                    |
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal fade" id="patientModal" tabindex="-1" role="dialog" aria-labelledby="patientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <form id="patientForm" method="post" action="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="patientModalLabel">Add New Patient</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" class="form-control" id="fullname" name="fullname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                         <label for="profession">Profession</label>
+                         <select class="form-control" id="profession" name="profession" required>
+                             <option value="">Select Profession</option>
+                             {% for value, label in professions %}
+                                 <option value="{{ value }}">{{ label }}</option>
+                             {% endfor %}
+                         </select>
+                    </div>                    
+                   
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save HCP</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function () {
+    // Handle Add New Patient (reset form)
+    $('[data-target="#patientModal"]').on('click', function () {
+        if (!$(this).hasClass('edit-patient-btn')) {
+            $('#patientModalLabel').text('Add New Patient');
+            $('#patientForm').trigger('reset');
+            $('#patientForm').attr('action', '{% url "hcp_register" %}');
+        }
+    });
+
+    // Handle Edit button click
+    $('.edit-patient-btn').on('click', function () {
+        var button = $(this);
+
+        // Set modal title and form action
+        $('#patientModalLabel').text('Edit Patient');
+        var hcpId = button.data('id');
+        $('#patientForm').attr('action', '/hcp_manage/edit/' + hcpId + '/');
+
+        // Fill form with existing data
+        $('#fullname').val(button.data('fullname'));
+        $('#phone_number').val(button.data('phone'));
+        $('#email').val(button.data('email'));
+        $('#profession').val(button.data('profession'));
+    });
+
+    // AJAX form submission
+    $('#patientForm').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+
+        $.ajax({
+            type: form.attr('method'),
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function (response) {
+                if (response.success) {
+                    $('#patientModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('There was an error: ' + response.error);
+                }
+            },
+            error: function () {
+                alert('An error occurred while submitting the form.');
+            }
+        });
+    });
+
+    // Delete a record
+    $('.delete-patient-btn').on('click', function () {
+        const hcpId = $(this).data('id');
+
+        if (confirm('Are you sure you want to delete this patient?')) {
+            $.ajax({
+                type: 'POST',
+                url: `/patients/delete/${hcpId}/`,
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to delete patient: ' + response.error);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while deleting the patient.');
+                }
+            });
+        }
+    });    
+});
+</script>
+
+<style>
+    /* Optional: Custom scrollbar styling */
+    .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+{% endblock %}
